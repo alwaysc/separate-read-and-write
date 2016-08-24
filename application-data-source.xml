@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:lang="http://www.springframework.org/schema/lang" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:cache="http://www.springframework.org/schema/cache" xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+	         http://www.springframework.org/schema/beans/spring-beans.xsd
+	         http://www.springframework.org/schema/lang
+	         http://www.springframework.org/schema/lang/spring-lang.xsd      
+	         http://www.springframework.org/schema/tx   
+	         http://www.springframework.org/schema/tx/spring-tx.xsd    
+	         http://www.springframework.org/schema/aop     
+	         http://www.springframework.org/schema/aop/spring-aop.xsd    
+	         http://www.springframework.org/schema/mvc     
+	         http://www.springframework.org/schema/mvc/spring-mvc.xsd   
+	         http://www.springframework.org/schema/context     
+	         http://www.springframework.org/schema/context/spring-context.xsd
+	         http://www.springframework.org/schema/cache
+	         http://www.springframework.org/schema/cache/spring-cache.xsd
+	         http://www.springframework.org/schema/task 
+	         http://www.springframework.org/schema/task/spring-task.xsd" default-lazy-init="true">
+	         
+	<!-- 创建SqlSessionFactory，同时指定数据源 -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="configLocation" value="classpath:mybatis-config.xml" />
+		<property name="typeAliasesPackage" value="com.test.model" />
+		<property name="mapperLocations">
+			<list>
+				<value>classpath*:/com/test/dao/mapper/*.xml</value>
+				<value>classpath*:/com/test/dao/customize/*.xml</value>
+			</list>
+		</property>
+		<property name="typeHandlersPackage" value="com.github.javaplugs.mybatis" />
+	</bean>
+
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate"
+		scope="prototype">
+		<constructor-arg index="0" ref="sqlSessionFactory" />
+	</bean>
+
+	<!--创建数据映射器，数据映射器必须为接口 -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<!-- <property name="annotationClass" value="org.springframework.stereotype.Repository" 
+			/> -->
+		<property name="basePackage" value="com.test.dao" />
+	</bean>
+	
+	<bean id="switcher" class="com.test.core.database.DataSourceSwitcher" >
+		<property name="slaves">
+			<list>
+				<value>slave1</value>
+<!-- 				<value>slave2</value> -->
+<!-- 				<value>slave3</value> -->
+			</list>
+		</property>
+	</bean>
+	
+	<bean id="dataSource" class="com.test.core.database.DynamicDataSource">
+		<property name="switcher" ref="switcher"></property>
+		<property name="targetDataSources">
+			<map key-type="java.lang.String">
+				<entry key="master" value-ref="masterDataSource" />
+				<entry key="slave1" value-ref="slave1DataSource" />
+<!-- 				<entry key="slave2" value-ref="slave2DataSource" /> -->
+<!-- 				<entry key="slave3" value-ref="slave3DataSource" /> -->
+			</map>
+		</property>
+		<property name="defaultTargetDataSource" ref="masterDataSource" />
+	</bean>
+
+	<!-- master data source -->
+	<bean id="masterDataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+		<property name="driverClassName" value="${jdbc.driverClass}" />
+		<property name="url" value="${master.jdbc.url}" />
+		<property name="username" value="${master.jdbc.userName}" />
+		<property name="password" value="${master.jdbc.password}"/>
+		<property name="defaultAutoCommit" value="true"></property>
+		<property name="maxActive" value="${jdbc.maxActive}" />  
+        <property name="initialSize" value="${jdbc.initialSize}" />  
+        <property name="maxWait" value="${jdbc.maxWait}" />  
+        <property name="maxIdle" value="${jdbc.maxIdle}" />  
+        <property name="minIdle" value="${jdbc.minIdle}" />  
+        <property name="removeAbandoned" value="true" />  
+        <property name="removeAbandonedTimeout" value="${jdbc.removeAbandonedTimeout}" />  
+        <property name="connectionProperties">  
+            <value>clientEncoding=utf-8</value>  
+        </property>
+         <!-- 打开检查,用异步线程evict进行检查 -->
+        <property name="testWhileIdle"><value>true</value></property>  
+	    <property name="testOnBorrow"><value>false</value></property>  
+	    <property name="testOnReturn"><value>false</value></property>  
+	    <property name="validationQuery"><value>SELECT NOW() FROM dual</value></property>  
+	    <property name="validationQueryTimeout"><value>1</value></property>  
+	    <property name="timeBetweenEvictionRunsMillis"><value>30000</value></property>  
+	    <property name="numTestsPerEvictionRun"><value>20</value></property>  
+	</bean>
+	
+	<!-- slave data source -->
+	<bean id="slave1DataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+		<property name="driverClassName" value="${jdbc.driverClass}" />
+		<property name="url" value="${slave.jdbc.url}" />
+		<property name="username" value="${slave.jdbc.userName}" />
+		<property name="password" value="${slave.jdbc.password}" />
+		<property name="defaultAutoCommit" value="true"></property>
+		<property name="maxActive" value="${jdbc.maxActive}" />  
+        <property name="initialSize" value="${jdbc.initialSize}" />  
+        <property name="maxWait" value="${jdbc.maxWait}" />  
+        <property name="maxIdle" value="${jdbc.maxIdle}" />  
+        <property name="minIdle" value="${jdbc.minIdle}" />  
+        <property name="removeAbandoned" value="true" />  
+        <property name="removeAbandonedTimeout" value="${jdbc.removeAbandonedTimeout}" />  
+        <property name="connectionProperties">  
+            <value>clientEncoding=utf-8</value>  
+        </property>
+         <!-- 打开检查,用异步线程evict进行检查 -->
+        <property name="testWhileIdle"><value>true</value></property>  
+	    <property name="testOnBorrow"><value>false</value></property>  
+	    <property name="testOnReturn"><value>false</value></property>  
+	    <property name="validationQuery"><value>SELECT NOW() FROM dual</value></property>  
+	    <property name="validationQueryTimeout"><value>1</value></property>  
+	    <property name="timeBetweenEvictionRunsMillis"><value>30000</value></property>  
+	    <property name="numTestsPerEvictionRun"><value>20</value></property>
+	</bean>
+	
+<!-- 	<bean id="slave2DataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close"> -->
+<!-- 		<property name="driverClassName" value="${jdbc.driverClass}" /> -->
+<!-- 		<property name="url" value="${slave.jdbc.url}" /> -->
+<!-- 		<property name="username" value="${slave.jdbc.userName}" /> -->
+<!-- 		<property name="password" value="${slave.jdbc.password}" /> -->
+<!-- 		<property name="defaultAutoCommit" value="true"></property> -->
+<!-- 		<property name="maxActive" value="${jdbc.maxActive}" />   -->
+<!--         <property name="initialSize" value="${jdbc.initialSize}" />   -->
+<!--         <property name="maxWait" value="${jdbc.maxWait}" />   -->
+<!--         <property name="maxIdle" value="${jdbc.maxIdle}" />   -->
+<!--         <property name="minIdle" value="${jdbc.minIdle}" />   -->
+<!--         <property name="removeAbandoned" value="true" />   -->
+<!--         <property name="removeAbandonedTimeout" value="${jdbc.removeAbandonedTimeout}" />   -->
+<!--         <property name="connectionProperties"> -->
+<!--             <value>clientEncoding=utf-8</value>  -->
+<!--         </property>   -->
+<!-- 	</bean> -->
+	
+<!-- 	<bean id="slave3DataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close"> -->
+<!-- 		<property name="driverClassName" value="${jdbc.driverClass}" /> -->
+<!-- 		<property name="url" value="${slave.jdbc.url}" /> -->
+<!-- 		<property name="username" value="${slave.jdbc.userName}" /> -->
+<!-- 		<property name="password" value="${slave.jdbc.password}" /> -->
+<!-- 		<property name="defaultAutoCommit" value="true"></property> -->
+<!-- 		<property name="maxActive" value="${jdbc.maxActive}" />   -->
+<!--         <property name="initialSize" value="${jdbc.initialSize}" />   -->
+<!--         <property name="maxWait" value="${jdbc.maxWait}" />   -->
+<!--         <property name="maxIdle" value="${jdbc.maxIdle}" />   -->
+<!--         <property name="minIdle" value="${jdbc.minIdle}" />   -->
+<!--         <property name="removeAbandoned" value="true" />   -->
+<!--         <property name="removeAbandonedTimeout" value="${jdbc.removeAbandonedTimeout}" />   -->
+<!--         <property name="connectionProperties">   -->
+<!--             <value>clientEncoding=utf-8</value>   -->
+<!--         </property>   -->
+<!-- 	</bean> -->
+
+	<!-- 根据方法名切换数据源 -->  
+    <bean id="dataSourceAdvice" class="com.test.core.database.DataSourceAdvice" >
+    	<property name="switcher" ref="switcher"></property>
+    	<property name="readMethodNames">
+    		<list>
+				<value>query</value>
+				<value>use</value>
+				<value>get</value>
+				<value>count</value>
+				<value>find</value>
+				<value>list</value>
+				<value>load</value>
+				<value>search</value>
+				<value>populate</value>
+				<value>login</value>
+			</list>
+    	</property>
+    </bean>
+    
+    <aop:config>  
+        <aop:advisor
+            pointcut="execution(* com.test..*Service*.*(..))" order="1"  
+            advice-ref="dataSourceAdvice" />
+    </aop:config>  
+</beans>
