@@ -28,7 +28,7 @@ public class DataSourceSwitcher {
 		if (index.get() >= slaves.size()) {
 			index.set(0);
 		}
-		setDataSource(slaves.get(index.get()));
+		setDataSource(slaves.get(index.get() % slaves.size()));
 		index.addAndGet(1);
 	}
 
